@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "r2-uploader",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-07-21",
+  "minify": true,
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "blog-post",
+      "preview_bucket_name": "blog-post-preview"
+    }
+  ],
+  "vars": {
+    "SECRET_R2_SERVICE": "secret",
+    "ORIGINS": ["http://localhost:3000"]
+  }
+  // "compatibility_flags": [
+  //   "nodejs_compat"
+  // ],
+  // "kv_namespaces": [
+  //   {
+  //     "binding": "MY_KV_NAMESPACE",
+  //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  //   }
+  // ],
+  // "d1_databases": [
+  //   {
+  //     "binding": "MY_DB",
+  //     "database_name": "my-database",
+  //     "database_id": ""
+  //   }
+  // ],
+  // "ai": {
+  //   "binding": "AI"
+  // },
+  // "observability": {
+  //   "enabled": true,
+  //   "head_sampling_rate": 1
+  // }
+}
