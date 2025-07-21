@@ -12,8 +12,16 @@ jobs:
     name: Deploy
     steps:
       - uses: actions/checkout@v4
-      - name: Install Wrangler
-        run: npm install -g wrangler@4.4.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
       - name: Deploy
         uses: cloudflare/wrangler-action@v3
         with:
