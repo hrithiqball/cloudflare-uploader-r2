@@ -14,7 +14,14 @@
   "vars": {
     "SECRET_R2_SERVICE": "secret",
     "ORIGINS": ["http://localhost:3000"]
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "blog-db",
+      "database_id": "f9320828-4a4b-45f5-9bc4-c72f14d06148"
+    }
+  ]
   // "compatibility_flags": [
   //   "nodejs_compat"
   // ],
@@ -22,13 +29,6 @@
   //   {
   //     "binding": "MY_KV_NAMESPACE",
   //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  //   }
-  // ],
-  // "d1_databases": [
-  //   {
-  //     "binding": "MY_DB",
-  //     "database_name": "my-database",
-  //     "database_id": ""
   //   }
   // ],
   // "ai": {
