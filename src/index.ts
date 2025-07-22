@@ -1,6 +1,7 @@
+import type { D1Database, R2Bucket } from '@cloudflare/workers-types'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import type { R2Bucket, D1Database } from '@cloudflare/workers-types'
+import { nanoid } from 'nanoid/non-secure'
 import { uploadRequestSchema } from './validations/upload'
 
 type Bindings = {
@@ -52,28 +53,63 @@ app
         return c.json({ message: 'Invalid token' }, 403)
       }
 
-      const key = `${new Date().toISOString().replace(/[:.]/g, '-')}-${file.name}`
+      const r2Key = `${new Date().toISOString().replace(/[:.]/g, '-')}-${file.name}`
+      const postId = nanoid()
       const buffer = await file.arrayBuffer()
 
-      await c.env.R2.put(key, buffer)
+      await c.env.R2.put(r2Key, buffer)
       await c.env.DB.prepare(
-        `INSERT INTO blog_posts (id, title, description, tags, category)
-        VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO blog_posts (id, title, description, tags, category, r2_key)
+        VALUES (?, ?, ?, ?, ?, ?)`
       )
-        .bind(key, title, description || '', tags || '', category)
+        .bind(postId, title, description || '', tags || '', category, r2Key)
         .run()
 
-      return c.json({ message: 'Uploaded', file: key })
+      return c.json({ message: 'Uploaded', postId, r2Key })
     } catch (error) {
       console.error('Upload error:', error)
       return c.json({ message: 'Internal server error' }, 500)
     }
   })
   .get('/list', async (c) => {
-    const objects = await c.env.R2.list()
-    const files = objects.objects.map((obj) => obj.key)
+    try {
+      const result = await c.env.DB.prepare(
+        `SELECT id, title, description, tags, category, r2_key, created_at FROM blog_posts ORDER BY created_at DESC`
+      ).all()
 
-    return c.json({ files })
+      return c.json({ posts: result.results })
+    } catch (error) {
+      console.error('List error:', error)
+      return c.json({ message: 'Internal server error' }, 500)
+    }
+  })
+  .get('/post/:id', async (c) => {
+    const { id } = c.req.param()
+    try {
+      const result = await c.env.DB.prepare(
+        `SELECT id, title, description, tags, category, r2_key, created_at FROM blog_posts WHERE id = ?`
+      )
+        .bind(id)
+        .first()
+
+      if (!result) {
+        return c.json({ message: 'Post not found' }, 404)
+      }
+
+      // TODO: validate with zod
+      const object = await c.env.R2.get(result.r2_key)
+
+      if (!object) {
+        return c.json({ message: 'Post content not found' }, 404)
+      }
+
+      const markdown = await object.text()
+
+      return c.json({ post: { ...result, markdown } })
+    } catch (error) {
+      console.error('Post retrieval error:', error)
+      return c.json({ message: 'Internal server error' }, 500)
+    }
   })
 
 export default app
