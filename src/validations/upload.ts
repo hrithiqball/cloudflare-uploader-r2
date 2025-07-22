@@ -16,11 +16,11 @@ export const fileSchema = z.object({
       {
         message: 'Only .md (Markdown) files are allowed'
       }
-    )
+    ),
+  token: z.string().min(1, 'Token is required')
 })
 
 export const uploadSchema = z.object({
-  token: z.string().min(1, 'Token is required'),
   title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters'),
   description: z.string().max(1000, 'Description must be less than 1000 characters').optional(),
   category: z
@@ -32,11 +32,22 @@ export const uploadSchema = z.object({
 
 export const uploadRequestSchema = z.object({
   file: fileSchema.shape.file,
-  token: uploadSchema.shape.token,
+  token: fileSchema.shape.token,
   title: uploadSchema.shape.title,
   description: uploadSchema.shape.description,
   category: uploadSchema.shape.category,
   tags: uploadSchema.shape.tags
 })
 
+export const blogPostSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().nullable(),
+  tags: z.string().nullable(),
+  category: z.string().nullable(),
+  r2_key: z.string(),
+  created_at: z.string()
+})
+
 export type UploadRequest = z.infer<typeof uploadRequestSchema>
+export type BlogPost = z.infer<typeof blogPostSchema>

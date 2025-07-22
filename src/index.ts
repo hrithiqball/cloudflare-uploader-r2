@@ -2,7 +2,7 @@ import type { D1Database, R2Bucket } from '@cloudflare/workers-types'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { nanoid } from 'nanoid/non-secure'
-import { uploadRequestSchema } from './validations/upload'
+import { uploadRequestSchema, blogPostSchema, fileSchema } from './validations/upload'
 
 type Bindings = {
   R2: R2Bucket
@@ -24,7 +24,40 @@ app.use('*', (c, next) => {
 app
   .get('/', (c) => c.text('ragebaited'))
   .get('/health', (c) => c.text('OK'))
-  .post('/upload', async (c) => {
+  .post('/upload-img', async (c) => {
+    try {
+      const form = await c.req.formData()
+
+      const input = { file: form.get('file'), token: form.get('token') }
+
+      const { data, error, success } = fileSchema.safeParse(input)
+
+      if (!success) {
+        const errors = error.issues.map((issue) => ({
+          field: issue.path.join('.'),
+          message: issue.message
+        }))
+        return c.json({ message: 'Validation failed', details: errors }, 400)
+      }
+
+      const { file, token } = data
+
+      if (token !== c.env.SECRET_R2_SERVICE) {
+        return c.json({ message: 'Invalid token' }, 403)
+      }
+
+      const key = `${nanoid()}-${file.name}`
+      const buffer = await file.arrayBuffer()
+
+      await c.env.R2.put(key, buffer)
+
+      return c.json({ message: 'Image uploaded', key })
+    } catch (error) {
+      console.error('Upload error:', error)
+      return c.json({ message: 'Internal server error' }, 500)
+    }
+  })
+  .post('/upload-md', async (c) => {
     try {
       const form = await c.req.formData()
 
@@ -96,8 +129,15 @@ app
         return c.json({ message: 'Post not found' }, 404)
       }
 
-      // TODO: validate with zod
-      const object = await c.env.R2.get(result.r2_key)
+      const validationResult = blogPostSchema.safeParse(result)
+
+      if (!validationResult.success) {
+        console.error('Database validation error:', validationResult.error)
+        return c.json({ message: 'Invalid post data' }, 500)
+      }
+
+      const validatedPost = validationResult.data
+      const object = await c.env.R2.get(validatedPost.r2_key)
 
       if (!object) {
         return c.json({ message: 'Post content not found' }, 404)
@@ -105,9 +145,38 @@ app
 
       const markdown = await object.text()
 
-      return c.json({ post: { ...result, markdown } })
+      return c.json({ post: { ...validatedPost, markdown } })
     } catch (error) {
       console.error('Post retrieval error:', error)
+      return c.json({ message: 'Internal server error' }, 500)
+    }
+  })
+  .delete('/post/:id', async (c) => {
+    const { id } = c.req.param()
+    try {
+      const post = await c.env.DB.prepare(`SELECT r2_key FROM blog_posts WHERE id = ?`)
+        .bind(id)
+        .first()
+
+      if (!post) {
+        return c.json({ message: 'Post not found' }, 404)
+      }
+
+      const validationResult = blogPostSchema.safeParse(post)
+
+      if (!validationResult.success) {
+        console.error('Database validation error:', validationResult.error)
+        return c.json({ message: 'Invalid post data' }, 500)
+      }
+
+      const validatedPost = validationResult.data
+
+      await c.env.R2.delete(validatedPost.r2_key)
+      await c.env.DB.prepare(`DELETE FROM blog_posts WHERE id = ?`).bind(id).run()
+
+      return c.json({ message: 'Post deleted' })
+    } catch (error) {
+      console.error('Delete error:', error)
       return c.json({ message: 'Internal server error' }, 500)
     }
   })
