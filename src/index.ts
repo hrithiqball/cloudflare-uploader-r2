@@ -162,16 +162,11 @@ app
         return c.json({ message: 'Post not found' }, 404)
       }
 
-      const validationResult = blogPostSchema.safeParse(post)
-
-      if (!validationResult.success) {
-        console.error('Database validation error:', validationResult.error)
-        return c.json({ message: 'Invalid post data' }, 500)
+      if (typeof post.r2_key !== 'string' || !post.r2_key) {
+        return c.json({ message: 'Invalid R2 key' }, 400)
       }
 
-      const validatedPost = validationResult.data
-
-      await c.env.R2.delete(validatedPost.r2_key)
+      await c.env.R2.delete(post.r2_key)
       await c.env.DB.prepare(`DELETE FROM blog_posts WHERE id = ?`).bind(id).run()
 
       return c.json({ message: 'Post deleted' })
