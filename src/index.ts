@@ -1,17 +1,9 @@
-import type { D1Database, R2Bucket } from '@cloudflare/workers-types'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { nanoid } from 'nanoid/non-secure'
-import { uploadRequestSchema, blogPostSchema, fileSchema } from './validations/upload'
+import { blogPostSchema, fileSchema } from './validations/upload'
 
-type Bindings = {
-  R2: R2Bucket
-  DB: D1Database
-  SECRET_R2_SERVICE: string
-  ORIGINS: string[]
-}
-
-const app = new Hono<{ Bindings: Bindings }>()
+const app = new Hono<{ Bindings: CloudflareBindings & { PF_SECRET: string } }>()
 
 app.use('*', (c, next) => {
   return cors({
@@ -24,6 +16,41 @@ app.use('*', (c, next) => {
 app
   .get('/', (c) => c.text('ragebaited'))
   .get('/health', (c) => c.text('OK'))
+  .get('/img/:key', async (c) => {
+    if (c.req.header('host') !== 'localhost:8787') {
+      return c.json({ message: 'Not found' }, 404)
+    }
+    const objectKey = c.req.param('key')
+    const object = await c.env.R2.get(objectKey)
+
+    if (!object) {
+      return c.json({ message: 'Image not found' }, 404)
+    }
+
+    return new Response(object.body, {
+      headers: {
+        'Content-Type': object.httpMetadata?.contentType || 'application/octet-stream',
+        'Content-Disposition': 'inline',
+        'Cache-Control': 'public, max-age=31536000, immutable'
+      }
+    })
+  })
+  .get('/list-r2', async (c) => {
+    if (c.req.header('host') !== 'localhost:8787') {
+      return c.json({ message: 'Not found' }, 404)
+    }
+
+    const objects = await c.env.R2.list()
+
+    return c.json({
+      message: 'List of R2 objects',
+      objects: objects.objects.map((obj) => ({
+        key: obj.key,
+        size: obj.size,
+        etag: obj.etag
+      }))
+    })
+  })
   .post('/upload-img', async (c) => {
     try {
       const form = await c.req.formData()
@@ -42,14 +69,18 @@ app
 
       const { file, token } = data
 
-      if (token !== c.env.SECRET_R2_SERVICE) {
+      if (token !== c.env.PF_SECRET) {
         return c.json({ message: 'Invalid token' }, 403)
       }
 
       const key = `${nanoid()}-${file.name}`
       const buffer = await file.arrayBuffer()
 
-      await c.env.R2.put(key, buffer)
+      await c.env.R2.put(key, buffer, {
+        httpMetadata: {
+          contentType: file.type || 'image/png'
+        }
+      })
 
       return c.json({ message: 'Image uploaded', key })
     } catch (error) {
@@ -57,45 +88,61 @@ app
       return c.json({ message: 'Internal server error' }, 500)
     }
   })
-  .post('/upload-md', async (c) => {
+  .post('/create-blog', async (c) => {
     try {
       const form = await c.req.formData()
 
       const formData = {
+        header: form.get('header'),
         file: form.get('file'),
         token: form.get('token'),
         title: form.get('title'),
         description: form.get('description'),
         category: form.get('category'),
-        tags: form.get('tags')
+        tags: form.get('tags'),
+        markdown: form.get('markdown')
       }
 
-      const validationResult = uploadRequestSchema.safeParse(formData)
-
-      if (!validationResult.success) {
-        const errors = validationResult.error.issues.map((issue) => ({
-          field: issue.path.join('.'),
-          message: issue.message
-        }))
-        return c.json({ message: 'Validation failed', details: errors }, 400)
-      }
-
-      const { file, token, title, description, category, tags } = validationResult.data
-
-      if (token !== c.env.SECRET_R2_SERVICE) {
+      if (formData.token !== c.env.PF_SECRET) {
         return c.json({ message: 'Invalid token' }, 403)
       }
 
-      const r2Key = `${new Date().toISOString().replace(/[:.]/g, '-')}-${file.name}`
+      const { title, description, category, tags, file, markdown, header } = formData
+
+      if (!(header instanceof File)) {
+        console.error('Header is not an image file:', header)
+        return c.json({ message: 'Header must be a file' }, 400)
+      }
+
+      let fileInput = null
+      if (file instanceof File) {
+        fileInput = file
+      } else if (typeof markdown === 'string' && markdown.trim() !== '') {
+        fileInput = new File([markdown], 'post.md', { type: 'text/markdown' })
+      }
+
+      if (!fileInput) {
+        return c.json({ message: 'File or markdown content is required' }, 400)
+      }
+
+      const r2Key =
+        fileInput && fileInput instanceof File
+          ? `${new Date().toISOString().replace(/[:.]/g, '-')}-${fileInput.name}`
+          : `${new Date().toISOString().replace(/[:.]/g, '-')}-post.md`
+
+      const headerKey = `${new Date().toISOString().replace(/[:.]/g, '-')}-header-${nanoid()}.png`
+
       const postId = nanoid()
-      const buffer = await file.arrayBuffer()
+      const buffer = await fileInput.arrayBuffer()
+      const headerBuffer = await header.arrayBuffer()
 
       await c.env.R2.put(r2Key, buffer)
+      await c.env.R2.put(headerKey, headerBuffer)
       await c.env.DB.prepare(
-        `INSERT INTO blog_posts (id, title, description, tags, category, r2_key)
-        VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO blog_posts (id, title, description, tags, category, r2_key, header)
+        VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
-        .bind(postId, title, description || '', tags || '', category, r2Key)
+        .bind(postId, title, description || '', tags || '', category, r2Key, headerKey)
         .run()
 
       return c.json({ message: 'Uploaded', postId, r2Key })
@@ -107,7 +154,7 @@ app
   .get('/list', async (c) => {
     try {
       const result = await c.env.DB.prepare(
-        `SELECT id, title, description, tags, category, r2_key, created_at FROM blog_posts ORDER BY created_at DESC`
+        `SELECT id, title, description, tags, category, r2_key, created_at, header FROM blog_posts ORDER BY created_at DESC`
       ).all()
 
       return c.json({ posts: result.results })
@@ -120,7 +167,7 @@ app
     const { id } = c.req.param()
     try {
       const result = await c.env.DB.prepare(
-        `SELECT id, title, description, tags, category, r2_key, created_at FROM blog_posts WHERE id = ?`
+        `SELECT id, title, description, tags, category, r2_key, created_at, header FROM blog_posts WHERE id = ?`
       )
         .bind(id)
         .first()
@@ -128,6 +175,8 @@ app
       if (!result) {
         return c.json({ message: 'Post not found' }, 404)
       }
+
+      console.log('Post result:', result)
 
       const validationResult = blogPostSchema.safeParse(result)
 

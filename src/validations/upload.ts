@@ -46,7 +46,8 @@ export const blogPostSchema = z.object({
   tags: z.string().nullable(),
   category: z.string().nullable(),
   r2_key: z.string(),
-  created_at: z.string()
+  created_at: z.string(),
+  header: z.string().nullable()
 })
 
 export type UploadRequest = z.infer<typeof uploadRequestSchema>

@@ -2,8 +2,6 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "r2-uploader",
   "main": "src/index.ts",
-  "compatibility_date": "2025-07-21",
-  "compatibility_flags": ["nodejs_compat"],
   "minify": true,
   "r2_buckets": [
     {
@@ -13,7 +11,6 @@
     }
   ],
   "vars": {
-    "SECRET_R2_SERVICE": "secret",
     "ORIGINS": ["http://localhost:3000"]
   },
   "d1_databases": [
