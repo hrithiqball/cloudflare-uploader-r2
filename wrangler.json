@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "r2-uploader",
+  "compatibility_date": "2025-07-26",
   "main": "src/index.ts",
   "minify": true,
   "r2_buckets": [
