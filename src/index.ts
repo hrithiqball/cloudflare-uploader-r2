@@ -3,7 +3,7 @@ import { cors } from 'hono/cors'
 import { nanoid } from 'nanoid/non-secure'
 import { blogPostSchema, fileSchema } from './validations/upload'
 
-const app = new Hono<{ Bindings: CloudflareBindings & { PF_SECRET: string } }>()
+const app = new Hono<{ Bindings: CloudflareBindings }>()
 
 app.use('*', (c, next) => {
   return cors({
@@ -69,7 +69,7 @@ app
 
       const { file, token } = data
 
-      if (token !== c.env.PF_SECRET) {
+      if (token !== c.env.EZ_SECRET) {
         return c.json({ message: 'Invalid token' }, 403)
       }
 
@@ -103,7 +103,7 @@ app
         markdown: form.get('markdown')
       }
 
-      if (formData.token !== c.env.PF_SECRET) {
+      if (formData.token !== c.env.EZ_SECRET) {
         return c.json({ message: 'Invalid token' }, 403)
       }
 

@@ -12,7 +12,8 @@
     }
   ],
   "vars": {
-    "ORIGINS": ["http://localhost:3000"]
+    "ORIGINS": ["http://localhost:3000"],
+    "EZ_SECRET": "secret"
   },
   "d1_databases": [
     {
@@ -21,20 +22,4 @@
       "database_id": "f9320828-4a4b-45f5-9bc4-c72f14d06148"
     }
   ]
-  // "compatibility_flags": [
-  //   "nodejs_compat"
-  // ],
-  // "kv_namespaces": [
-  //   {
-  //     "binding": "MY_KV_NAMESPACE",
-  //     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  //   }
-  // ],
-  // "ai": {
-  //   "binding": "AI"
-  // },
-  // "observability": {
-  //   "enabled": true,
-  //   "head_sampling_rate": 1
-  // }
 }
