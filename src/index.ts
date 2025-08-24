@@ -70,7 +70,7 @@ app
 
       const { file, token } = data
 
-      if (token !== c.env.EZ_SECRET) {
+      if (token !== c.env.SECRET) {
         return c.json({ message: 'Invalid token' }, 403)
       }
 
@@ -104,7 +104,8 @@ app
         markdown: form.get('markdown')
       }
 
-      if (formData.token !== c.env.EZ_SECRET) {
+      if (formData.token !== c.env.SECRET) {
+        console.error('Invalid token:', formData.token)
         return c.json({ message: 'Invalid token' }, 403)
       }
 
@@ -123,6 +124,7 @@ app
       }
 
       if (!fileInput) {
+        console.error('File or markdown content is required')
         return c.json({ message: 'File or markdown content is required' }, 400)
       }
 
@@ -137,10 +139,8 @@ app
       const buffer = await fileInput.arrayBuffer()
       const headerBuffer = await header.arrayBuffer()
 
-      // Generate slug from title
       const baseSlug = generateSlug(title as string)
 
-      // Check for existing slugs to ensure uniqueness
       const existingSlugsResult = await c.env.DB.prepare('SELECT slug FROM blog_posts').all()
       const existingSlugs = existingSlugsResult.results.map((row: any) => row.slug)
       const uniqueSlug = ensureUniqueSlug(baseSlug, existingSlugs)

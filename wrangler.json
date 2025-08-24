@@ -4,6 +4,11 @@
   "compatibility_date": "2025-07-26",
   "main": "src/index.ts",
   "minify": true,
+  "observability": {
+    "logs": {
+      "enabled": true
+    }
+  },
   "r2_buckets": [
     {
       "binding": "R2",
@@ -12,8 +17,7 @@
     }
   ],
   "vars": {
-    "ORIGINS": [],
-    "EZ_SECRET": ""
+    "ORIGINS": []
   },
   "d1_databases": [
     {
