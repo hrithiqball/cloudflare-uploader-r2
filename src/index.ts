@@ -139,7 +139,7 @@ app
 
       // Generate slug from title
       const baseSlug = generateSlug(title as string)
-      
+
       // Check for existing slugs to ensure uniqueness
       const existingSlugsResult = await c.env.DB.prepare('SELECT slug FROM blog_posts').all()
       const existingSlugs = existingSlugsResult.results.map((row: any) => row.slug)
@@ -172,44 +172,7 @@ app
       return c.json({ message: 'Internal server error' }, 500)
     }
   })
-  .get('/post/:id', async (c) => {
-    const { id } = c.req.param()
-    try {
-      const result = await c.env.DB.prepare(
-        `SELECT id, title, description, tags, category, r2_key, created_at, header, slug FROM blog_posts WHERE id = ?`
-      )
-        .bind(id)
-        .first()
-
-      if (!result) {
-        return c.json({ message: 'Post not found' }, 404)
-      }
-
-      console.log('Post result:', result)
-
-      const validationResult = blogPostSchema.safeParse(result)
-
-      if (!validationResult.success) {
-        console.error('Database validation error:', validationResult.error)
-        return c.json({ message: 'Invalid post data' }, 500)
-      }
-
-      const validatedPost = validationResult.data
-      const object = await c.env.R2.get(validatedPost.r2_key)
-
-      if (!object) {
-        return c.json({ message: 'Post content not found' }, 404)
-      }
-
-      const markdown = await object.text()
-
-      return c.json({ post: { ...validatedPost, markdown } })
-    } catch (error) {
-      console.error('Post retrieval error:', error)
-      return c.json({ message: 'Internal server error' }, 500)
-    }
-  })
-  .get('/post/slug/:slug', async (c) => {
+  .get('/post/:slug', async (c) => {
     const { slug } = c.req.param()
     try {
       const result = await c.env.DB.prepare(
@@ -221,8 +184,6 @@ app
       if (!result) {
         return c.json({ message: 'Post not found' }, 404)
       }
-
-      console.log('Post result by slug:', result)
 
       const validationResult = blogPostSchema.safeParse(result)
 

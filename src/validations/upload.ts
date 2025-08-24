@@ -2,21 +2,9 @@ import { z } from 'zod'
 
 export const fileSchema = z.object({
   file: z
-    .instanceof(File)
-    .refine((file) => file.size > 0, {
-      message: 'File cannot be empty'
-    })
-    .refine((file) => file.size <= 10 * 1024 * 1024, {
-      message: 'File size must be less than 10MB'
-    })
-    .refine(
-      (file) => {
-        return file.name.toLowerCase().endsWith('.md') || file.type === 'text/markdown'
-      },
-      {
-        message: 'Only .md (Markdown) files are allowed'
-      }
-    ),
+    .file()
+    .mime(['image/webp', 'text/markdown', 'image/png'])
+    .max(10 * 1024 * 1024, 'File size must be less than 10MB'),
   token: z.string().min(1, 'Token is required')
 })
 
