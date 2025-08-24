@@ -207,11 +207,11 @@ app
       return c.json({ message: 'Internal server error' }, 500)
     }
   })
-  .delete('/post/:id', async (c) => {
-    const { id } = c.req.param()
+  .delete('/post/:slug', async (c) => {
+    const { slug } = c.req.param()
     try {
-      const post = await c.env.DB.prepare(`SELECT r2_key FROM blog_posts WHERE id = ?`)
-        .bind(id)
+      const post = await c.env.DB.prepare(`SELECT r2_key FROM blog_posts WHERE slug = ?`)
+        .bind(slug)
         .first()
 
       if (!post) {
@@ -223,7 +223,7 @@ app
       }
 
       await c.env.R2.delete(post.r2_key)
-      await c.env.DB.prepare(`DELETE FROM blog_posts WHERE id = ?`).bind(id).run()
+      await c.env.DB.prepare(`DELETE FROM blog_posts WHERE slug = ?`).bind(slug).run()
 
       return c.json({ message: 'Post deleted' })
     } catch (error) {
