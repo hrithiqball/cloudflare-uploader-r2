@@ -6,13 +6,13 @@ import { generateSlug, ensureUniqueSlug } from './utils/slug'
 
 const app = new Hono<{ Bindings: CloudflareBindings }>()
 
-app.use('*', (c, next) => {
-  return cors({
-    origin: c.env.ORIGINS,
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization']
-  })(c, next)
-})
+// app.use('*', (c, next) => {
+//   return cors({
+//     origin: c.env.ORIGINS,
+//     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//     allowHeaders: ['Content-Type', 'Authorization']
+//   })(c, next)
+// })
 
 app
   .get('/', (c) => c.text('ragebaited'))

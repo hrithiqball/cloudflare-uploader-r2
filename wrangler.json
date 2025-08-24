@@ -12,8 +12,8 @@
     }
   ],
   "vars": {
-    "ORIGINS": ["http://localhost:3000"],
-    "EZ_SECRET": "secret"
+    "ORIGINS": [],
+    "EZ_SECRET": ""
   },
   "d1_databases": [
     {
