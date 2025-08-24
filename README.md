@@ -5,13 +5,13 @@ This is a simple file uploader for Cloudflare R2 using Hono. It allows you to up
 ##### To add new secret to cloudflare secrets, run:
 
 ```bash
-bunx wrangler secret put SECRET_R2_SERVICE
+pnpx wrangler secret put SECRET_R2_SERVICE
 ```
 
 ##### Local Development
 
 ```bash
-bun dev
+pnpm dev
 ```
 
 > This will start the development server and you can access it at `http://localhost:8787`. However, it is just a mock and does not upload a single file to R2
@@ -19,10 +19,6 @@ bun dev
 ##### D1 Database
 
 To run migrations for the D1 database, you can use the following command:
-
-```bash
-npx wrangler d1 execute blog-db --file=./migrations/init.sql
-```
 
 To run the uploader locally, you can use the following command:
 
